@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Navbar } from "@/components/navbar"
 import { MessageSquare, Users, Heart, MessageCircle, Share2, Loader } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useSocket } from "@/context/socket-context"
+
 
 export default function CommunityPage({ params }: { params: { id: string } }) {
   const communityId = params.id

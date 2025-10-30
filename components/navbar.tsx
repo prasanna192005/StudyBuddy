@@ -1,170 +1,195 @@
-//@ts-nocheck
-"use client"
+'use client';
 
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { useTheme } from "next-themes"
-import { motion } from "framer-motion"
-import { Menu, X, LogOut, User, Moon, Sun } from "lucide-react"
-import { onAuthStateChanged, signOut } from "firebase/auth"
-import { auth } from "@/lib/firebase" // <-- make sure this exists (same as before)
+import { useEffect, useState } from 'react';
+import { auth } from '@/lib/firebase';
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  User
+} from 'firebase/auth';
 
-export function Navbar() {
-  const { theme, setTheme } = useTheme()
-  const [isOpen, setIsOpen] = useState(false)
-  const [user, setUser] = useState(null)
+export default function StudyBuddyNavbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Track Firebase Auth state
+  const navLinks = [
+    { name: "Dashboard", href: "/dashboard", icon: "📊" },
+    { name: "Study Groups", href: "/groups", icon: "👥" },
+    { name: "Resources", href: "/resources", icon: "📚" },
+    { name: "Calendar", href: "/calendar", icon: "📅" },
+  ];
+
+  // 🔥 Listen for Firebase Auth changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser)
-    })
-    return () => unsubscribe()
-  }, [])
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
+  // 🟢 Sign in with Google
+  const handleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
 
+  // 🔴 Sign out
   const handleLogout = async () => {
     try {
-      await signOut(auth)
+      await signOut(auth);
+      setIsProfileOpen(false);
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Logout failed:", error);
     }
+  };
+
+  if (loading) {
+    return (
+      <nav className="bg-gray-900 text-gray-300 p-4 text-center">
+        Loading...
+      </nav>
+    );
   }
 
   return (
-    <motion.nav
-      className="sticky top-0 z-50 glass border-b border-primary/10"
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
+    <nav className="bg-gray-900/95 backdrop-blur-xl border-b border-orange-500/20 sticky top-0 z-50 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center text-white font-bold">
-              SB
-            </div>
-            <span className="font-bold text-lg hidden sm:inline">StudyBuddy</span>
-          </Link>
+          {/* Logo */}
+          <div className="flex items-center space-x-2">
+            <div className="text-3xl">🎓</div>
+            <span className="text-2xl font-bold text-white">
+              Study<span className="text-orange-400">Buddy</span>
+            </span>
+          </div>
 
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-1">
+            {navLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.href}
+                className="px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-orange-500/10 transition-all duration-300 flex items-center space-x-2 group"
+              >
+                <span className="group-hover:scale-110 transition-transform duration-300">
+                  {link.icon}
+                </span>
+                <span className="font-medium">{link.name}</span>
+              </a>
+            ))}
+          </div>
+
+          {/* Right Section */}
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-64 px-4 py-2 pl-10 rounded-xl bg-gray-800/50 border border-gray-700 text-white placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300"
+              />
+              <span className="absolute left-3 top-2.5 text-gray-500">🔍</span>
+            </div>
+
+            {/* Notifications */}
+            <button className="relative p-2 rounded-lg text-gray-300 hover:text-white hover:bg-orange-500/10 transition-all duration-300">
+              <span className="text-xl">🔔</span>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+            </button>
+
+            {/* If user is logged in */}
             {user ? (
-              <>
-                <Link href="/dashboard" className="smooth-transition hover:text-primary">
-                  Dashboard
-                </Link>
-                <Link href="/communities" className="smooth-transition hover:text-primary">
-                  Communities
-                </Link>
-                <Link href="/notifications" className="smooth-transition hover:text-primary">
-                  Notifications
-                </Link>
-                <div className="flex items-center gap-4">
-                  <Link href="/profile" className="flex items-center gap-2 smooth-transition hover:text-primary">
-                    <User size={20} />
-                    <span className="text-sm">{user.displayName || user.email}</span>
-                  </Link>
-                  <button
-                    onClick={toggleTheme}
-                    className="p-2 rounded-lg hover:bg-primary/10 smooth-transition"
-                    aria-label="Toggle dark mode"
-                  >
-                    {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 smooth-transition"
-                  >
-                    <LogOut size={18} />
-                    Logout
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="smooth-transition hover:text-primary">
-                  Login
-                </Link>
+              <div className="relative">
                 <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-lg hover:bg-primary/10 smooth-transition"
-                  aria-label="Toggle dark mode"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center space-x-3 p-2 rounded-xl hover:bg-orange-500/10 transition-all duration-300"
                 >
-                  {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+                  <img
+                    src={user.photoURL || 'https://ui-avatars.com/api/?name=User'}
+                    alt={user.displayName || 'User'}
+                    className="w-9 h-9 rounded-full ring-2 ring-orange-500/50"
+                  />
+                  <div className="text-left hidden lg:block">
+                    <p className="text-sm font-semibold text-white">
+                      {user.displayName}
+                    </p>
+                    <p className="text-xs text-gray-400">Student</p>
+                  </div>
+                  <span className="text-gray-400">▼</span>
                 </button>
-                <Link
-                  href="/auth"
-                  className="px-6 py-2 rounded-lg gradient-primary text-white font-semibold smooth-transition hover:shadow-lg hover:shadow-primary/50"
-                >
-                  Sign Up
-                </Link>
-              </>
+
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-xl shadow-2xl border border-orange-500/20 py-2 animate-fadeIn">
+                    <div className="px-4 py-3 border-b border-gray-700">
+                      <p className="text-sm font-semibold text-white">
+                        {user.displayName}
+                      </p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
+                    </div>
+                    <a href="/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-orange-500/10 hover:text-white transition-all duration-300">
+                      👤 My Profile
+                    </a>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-orange-400 hover:bg-orange-500/10 transition-all duration-300"
+                    >
+                      🚪 Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={handleLogin}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-300"
+              >
+                Sign In with Google
+              </button>
             )}
           </div>
 
-          {/* Mobile Menu Button + Theme Toggle */}
-          <div className="md:hidden flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-primary/10 smooth-transition"
-              aria-label="Toggle dark mode"
-            >
-              {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-lg hover:bg-primary/10 smooth-transition">
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 rounded-lg text-gray-300 hover:text-white hover:bg-orange-500/10 transition-all duration-300"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
 
-        {/* Mobile Menu */}
-        {isOpen && (
-          <motion.div
-            className="md:hidden pb-4 space-y-2"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {user ? (
-              <>
-                <Link href="/dashboard" className="block px-4 py-2 rounded-lg hover:bg-primary/10 smooth-transition">
-                  Dashboard
-                </Link>
-                <Link href="/communities" className="block px-4 py-2 rounded-lg hover:bg-primary/10 smooth-transition">
-                  Communities
-                </Link>
-                <Link href="/notifications" className="block px-4 py-2 rounded-lg hover:bg-primary/10 smooth-transition">
-                  Notifications
-                </Link>
-                <Link href="/profile" className="block px-4 py-2 rounded-lg hover:bg-primary/10 smooth-transition">
-                  Profile
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 smooth-transition"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/auth" className="block px-4 py-2 rounded-lg hover:bg-primary/10 smooth-transition">
-                  Login
-                </Link>
-                <Link
-                  href="/auth"
-                  className="block px-4 py-2 rounded-lg gradient-primary text-white font-semibold smooth-transition"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </motion.div>
-        )}
+        {/* Mobile Menu (optional to expand login/logout) */}
       </div>
-    </motion.nav>
-  )
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+      `}</style>
+    </nav>
+  );
 }

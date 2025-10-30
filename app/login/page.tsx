@@ -1,16 +1,17 @@
-//@ts-nocheck
+// @ts-nocheck
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
   signInWithPopup,
+  onAuthStateChanged,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, googleProvider } from "@/lib/firebase"; // ✅ make sure this file exports these
+import { auth, db, googleProvider } from "@/lib/firebase";
 
 export default function StudyCommunityLogin() {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,6 +21,17 @@ export default function StudyCommunityLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // 🔥 Auto-redirect if user is already logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push("/dashboard");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  // 🟢 Handle Sign In / Sign Up
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -49,8 +61,10 @@ export default function StudyCommunityLogin() {
         console.log("✅ User registered successfully!");
       }
 
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // ✅ Wait for Firebase to finalize, then redirect
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 500);
     } catch (error) {
       console.error("Authentication Error:", error);
       alert(`Authentication failed: ${error.message}`);
@@ -59,15 +73,13 @@ export default function StudyCommunityLogin() {
     }
   };
 
-  // ✅ Handles Google Sign-In
+  // 🔵 Handle Google Auth
   const handleGoogleAuth = async () => {
     setIsLoading(true);
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
-      // --- Check if user exists ---
       const userRef = doc(db, "users", user.uid);
       const docSnap = await getDoc(userRef);
 
@@ -84,7 +96,9 @@ export default function StudyCommunityLogin() {
       }
 
       console.log("✅ Google login successful!");
-      router.push("/dashboard");
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 500);
     } catch (error) {
       console.error("❌ Google Auth Error:", error);
       alert(`Google Sign-In failed: ${error.message}`);
@@ -117,7 +131,9 @@ export default function StudyCommunityLogin() {
             <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
               Study<span className="text-orange-400">Buddy</span>
             </h1>
-            <p className="text-orange-300 text-sm font-medium">Your Learning Community Awaits</p>
+            <p className="text-orange-300 text-sm font-medium">
+              Your Learning Community Awaits
+            </p>
           </div>
 
           {/* Auth Card */}
